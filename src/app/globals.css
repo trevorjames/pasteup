@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --pasteup-rust: #c84b2f;
+  --pasteup-ink: #1a1208;
+  --pasteup-cream: #f5f0e8;
+  --pasteup-paper: #ede8df;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Fabric canvas cursor overrides */
+.canvas-container {
+  cursor: default;
+}
+
+/* Fabric selection styling */
+.canvas-container canvas {
+  display: block;
+}
+
+/* Thin scrollbars */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
