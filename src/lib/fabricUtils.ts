@@ -54,10 +54,14 @@ export function loadImageFromUrl(
 ): Promise<any> {
   return new Promise((resolve, reject) => {
     const { fabric } = (window as any).__fabricLib
-    const proxied = `/api/image-proxy?url=${encodeURIComponent(url)}`
+
+    // Data URLs (from uploads) load directly — no CORS, no proxy needed.
+    // Everything else (NYPL, Smithsonian, etc.) goes through the proxy.
+    const isDataUrl = url.startsWith('data:')
+    const finalUrl = isDataUrl ? url : `/api/image-proxy?url=${encodeURIComponent(url)}`
 
     fabric.Image.fromURL(
-      proxied,
+      finalUrl,
       (img: any) => {
         if (!img) { reject(new Error('Image load failed')); return }
 

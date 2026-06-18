@@ -472,7 +472,8 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
           if (!url) return
           const fc = (canvasElRef.current as any).__fabricInstance
           if (!fc) return
-          const proxied = `/api/image-proxy?url=${encodeURIComponent(url)}`
+          const isDataUrl = url.startsWith('data:')
+          const proxied = isDataUrl ? url : `/api/image-proxy?url=${encodeURIComponent(url)}`
           fabric.Image.fromURL(
             proxied,
             (img: any) => {
