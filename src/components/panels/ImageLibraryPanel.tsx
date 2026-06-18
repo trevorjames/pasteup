@@ -42,7 +42,7 @@ export function ImageLibraryPanel({ onImageSelect }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
-  const searchTimeout = useRef<ReturnType<typeof setTimeout>>()
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   // Upload-specific state
   const [uploads, setUploads] = useState<UploadedImage[]>([])
@@ -144,21 +144,37 @@ export function ImageLibraryPanel({ onImageSelect }: Props) {
       </div>
 
       {/* Source tabs */}
-      <div className="flex border-b border-zinc-200 dark:border-zinc-800">
-        {SOURCES.map(s => (
-          <button
-            key={s.id}
-            onClick={() => setSource(s.id)}
-            className={[
-              'flex-1 py-1.5 text-[10px] font-medium transition-all border-b-2',
-              source === s.id
-                ? 'text-zinc-900 dark:text-zinc-100 border-[#c84b2f]'
-                : 'text-zinc-400 border-transparent hover:text-zinc-600',
-            ].join(' ')}
-          >
-            {s.label}
-          </button>
-        ))}
+      <div className="border-b border-zinc-200 dark:border-zinc-800">
+        {/* Collection sources row */}
+        <div className="flex">
+          {SOURCES.filter(s => s.id !== 'upload').map(s => (
+            <button
+              key={s.id}
+              onClick={() => setSource(s.id)}
+              className={[
+                'flex-1 py-1.5 text-[10px] font-medium transition-all border-b-2',
+                source === s.id
+                  ? 'text-zinc-900 dark:text-zinc-100 border-[#c84b2f]'
+                  : 'text-zinc-400 border-transparent hover:text-zinc-600 dark:hover:text-zinc-300',
+              ].join(' ')}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+        {/* Upload — separate row, visually distinct */}
+        <button
+          onClick={() => setSource('upload')}
+          className={[
+            'w-full flex items-center justify-center gap-1.5 py-1.5 text-[10px] font-medium transition-all border-b-2',
+            source === 'upload'
+              ? 'text-[#c84b2f] border-[#c84b2f] bg-[#c84b2f]/5'
+              : 'text-zinc-400 border-transparent hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/50',
+          ].join(' ')}
+        >
+          <Upload size={11} />
+          Upload your own images
+        </button>
       </div>
 
       {/* ── Upload tab content ────────────────────────────────────────── */}
