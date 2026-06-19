@@ -98,20 +98,43 @@ export function applyRectCrop(
   img: any,
   rect: { left: number; top: number; width: number; height: number }
 ): void {
+  const bounds = img.getBoundingRect()
+  const offscreen = document.createElement('canvas')
+  offscreen.width = Math.ceil(rect.width)
+  offscreen.height = Math.ceil(rect.height)
+  const ctx = offscreen.getContext('2d')!
+
+  ctx.drawImage(
+    img._element,
+    0, 0,
+    img._element.width,
+    img._element.height,
+    -(rect.left - bounds.left) - (bounds.left - img.left),
+    -(rect.top - bounds.top) - (bounds.top - img.top),
+    img._element.width * img.scaleX,
+    img._element.height * img.scaleY
+  )
+
   const { fabric } = (window as any).__fabricLib
-
-  const clip = new fabric.Rect({
-    left: rect.left,
-    top: rect.top,
-    width: rect.width,
-    height: rect.height,
-    absolutePositioned: true,
+  fabric.Image.fromURL(offscreen.toDataURL('image/png'), (newImg: any) => {
+    if (!newImg) return
+    newImg.set({
+      left: rect.left,
+      top: rect.top,
+      selectable: true,
+      evented: true,
+      cornerStyle: 'circle',
+      cornerColor: '#c84b2f',
+      cornerStrokeColor: '#fff',
+      borderColor: '#c84b2f',
+      transparentCorners: false,
+    })
+    newImg.setCoords()
+    canvas.add(newImg)
+    canvas.setActiveObject(newImg)
+    canvas.remove(img)
+    canvas.requestRenderAll()
   })
-
-  img.clipPath = clip
-  img.dirty = true
-  img.setCoords()
-  canvas.requestRenderAll()
 }
 
 // ─── Lasso / freehand mask — pixel extraction ────────────────────────────────

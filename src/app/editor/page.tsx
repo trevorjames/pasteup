@@ -9,6 +9,7 @@ import { ToolSettingsBar } from '@/components/canvas/ToolSettingsBar'
 import { ImageLibraryPanel } from '@/components/panels/ImageLibraryPanel'
 import { PropertiesPanel } from '@/components/panels/PropertiesPanel'
 import { AuthModal } from '@/components/auth/AuthModal'
+import { PublishModal } from '@/components/publish/PublishModal'
 import { supabase } from '@/lib/supabase'
 import { saveCollage, loadCollage } from '@/lib/collages'
 import { CANVAS_FORMATS, DEFAULT_FORMAT } from '@/types'
@@ -35,6 +36,10 @@ export default function EditorPage() {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+
+  // Publish state
+  const [showPublishModal, setShowPublishModal] = useState(false)
+  const [currentCollage, setCurrentCollage] = useState<any>(null)
 
   // Listen for auth state changes
   useEffect(() => {
@@ -111,18 +116,18 @@ export default function EditorPage() {
 
     setSaving(true)
     try {
-      // Generate preview thumbnail from canvas
-      const canvasEl = document.querySelector('.lower-canvas') as HTMLCanvasElement
-      let previewUrl: string | undefined
-      if (canvasEl) {
-        const offscreen = document.createElement('canvas')
-        const scale = 400 / Math.max(canvasEl.width, canvasEl.height)
-        offscreen.width = Math.round(canvasEl.width * scale)
-        offscreen.height = Math.round(canvasEl.height * scale)
-        const ctx = offscreen.getContext('2d')!
-        ctx.drawImage(canvasEl, 0, 0, offscreen.width, offscreen.height)
-        previewUrl = offscreen.toDataURL('image/jpeg', 0.8)
-      }
+  // Generate preview thumbnail from canvas
+const canvasEl = document.querySelector('.lower-canvas') as HTMLCanvasElement
+let previewUrl: string | undefined
+if (canvasEl) {
+  const offscreen = document.createElement('canvas')
+  const scale = 1200 / Math.max(canvasEl.width, canvasEl.height)
+  offscreen.width = Math.round(canvasEl.width * scale)
+  offscreen.height = Math.round(canvasEl.height * scale)
+  const ctx = offscreen.getContext('2d')!
+  ctx.drawImage(canvasEl, 0, 0, offscreen.width, offscreen.height)
+  previewUrl = offscreen.toDataURL('image/jpeg', 0.92)
+}
 
       const result = await saveCollage({
         id: collageId ?? undefined,
@@ -132,6 +137,7 @@ export default function EditorPage() {
         previewUrl,
       })
       setCollageId(result.id)
+      setCurrentCollage(result)
       setSaved(true)
     } catch (err) {
       console.error('Save failed:', err)
@@ -166,9 +172,16 @@ export default function EditorPage() {
     alert('Print PDF export coming soon!')
   }, [])
 
-  const handlePublish = useCallback(() => {
-    alert('Publishing coming soon!')
-  }, [])
+  const handlePublish = useCallback(async () => {
+    if (!user) {
+      setAuthMode('signin')
+      setShowAuthModal(true)
+      return
+    }
+    // Save first to make sure we have a collageId
+    await handleSave()
+    setShowPublishModal(true)
+  }, [user, handleSave])
 
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-zinc-950 overflow-hidden">
@@ -179,6 +192,15 @@ export default function EditorPage() {
           initialMode={authMode}
           onClose={() => setShowAuthModal(false)}
           onSuccess={handleAuthSuccess}
+        />
+      )}
+
+      {/* Publish modal */}
+      {showPublishModal && currentCollage && (
+        <PublishModal
+          collage={currentCollage}
+          onClose={() => setShowPublishModal(false)}
+          onUpdate={(updated) => setCurrentCollage(updated)}
         />
       )}
 
