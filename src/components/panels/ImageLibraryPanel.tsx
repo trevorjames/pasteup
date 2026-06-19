@@ -4,7 +4,7 @@
 // supports uploading the user's own images. Displays thumbnails,
 // lets users click or drag images to the canvas.
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Search, Loader2, ImageOff, BookOpen, Globe, Upload, X } from 'lucide-react'
 import { searchNYPL } from '@/lib/nypl'
 import { resizeImageFile, ImageTooLargeError, InvalidImageError } from '@/lib/imageResize'
@@ -19,7 +19,21 @@ const SOURCES: { id: Source; label: string; placeholder?: string }[] = [
   { id: 'upload', label: 'Upload' },
 ]
 
-const SEED_QUERIES = ['botanical', 'portrait', 'map', 'architecture', 'pattern']
+// Curated terms that return rich, visually interesting public domain results
+// from NYPL's collection. A random subset is shown each time.
+const ALL_SEED_QUERIES = [
+  'botanical', 'portrait', 'map', 'architecture', 'pattern',
+  'fashion', 'illustration', 'circus', 'poster', 'bird',
+  'flower', 'cityscape', 'manuscript', 'mythology', 'costume',
+  'advertisement', 'landscape', 'anatomy', 'astronomy', 'textile',
+  'woodcut', 'lithograph', 'sheet music', 'menu', 'dance',
+  'locomotive', 'ocean', 'butterfly', 'typeface', 'ephemera',
+]
+
+function getSeedQueries(count = 9): string[] {
+  const shuffled = [...ALL_SEED_QUERIES].sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, count)
+}
 
 // Uploaded images live only in browser session memory for now —
 // not persisted. Each entry pairs a thumbnail with the (possibly
@@ -50,6 +64,10 @@ export function ImageLibraryPanel({ onImageSelect }: Props) {
   const [uploadBusy, setUploadBusy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragActive, setDragActive] = useState(false)
+
+  // Seed queries — stable on SSR, randomized after hydration
+  const [seedQueries, setSeedQueriesState] = useState<string[]>(ALL_SEED_QUERIES.slice(0, 9))
+  useEffect(() => { setSeedQueriesState(getSeedQueries(9)) }, [])
 
   const doSearch = useCallback(async (q: string, p = 1, append = false) => {
     if (!q.trim()) { setResults([]); return }
@@ -282,16 +300,31 @@ export function ImageLibraryPanel({ onImageSelect }: Props) {
           </div>
 
           {/* Quick filters */}
-          <div className="flex flex-wrap gap-1 px-3 py-2 border-b border-zinc-200 dark:border-zinc-800">
-            {SEED_QUERIES.map(q => (
+          <div className="px-3 py-2 border-b border-zinc-200 dark:border-zinc-800">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[9px] text-zinc-400 uppercase tracking-wider">Explore</span>
               <button
-                key={q}
-                onClick={() => { setQuery(q); doSearch(q) }}
-                className="text-[9px] px-2 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:border-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition-all capitalize"
+                onClick={() => {
+                  const next = getSeedQueries(9)
+                  setSeedQueriesState(next)
+                }}
+                className="text-[9px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                title="Shuffle suggestions"
               >
-                {q}
+                ↻ shuffle
               </button>
-            ))}
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {seedQueries.map(q => (
+                <button
+                  key={q}
+                  onClick={() => { setQuery(q); doSearch(q) }}
+                  className="text-[9px] px-2 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:border-[#c84b2f] hover:text-[#c84b2f] dark:hover:text-[#c84b2f] transition-all capitalize"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Results grid */}

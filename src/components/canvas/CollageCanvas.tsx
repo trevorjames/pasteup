@@ -1,7 +1,7 @@
 'use client'
 // src/components/canvas/CollageCanvas.tsx - Fabric 5 compatible
 
-import { useEffect, useRef, useImperativeHandle, forwardRef, useCallback } from 'react'
+import { useEffect, useRef, useImperativeHandle, forwardRef, useCallback, useState } from 'react'
 import type { ToolMode, CanvasFormat, ObjectProperties } from '@/types'
 
 export type CollageCanvasHandle = {
@@ -44,6 +44,13 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
     const lastSelectedRef = useRef<any>(null)
     const textFontRef = useRef(textFont)
     useEffect(() => { textFontRef.current = textFont }, [textFont])
+    const [isEmpty, setIsEmpty] = useState(true)
+
+    const updateEmpty = useCallback(() => {
+      const canvas = fabricRef.current
+      if (!canvas) return
+      setIsEmpty(canvas.getObjects().length === 0)
+    }, [])
 
     const lassoRef = useRef<{
       active: boolean
@@ -169,6 +176,8 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
         canvas.on('selection:updated', emitProps)
         canvas.on('selection:cleared', () => onSelectionChange(null))
         canvas.on('object:modified', () => { pushHistory(); onCanvasChange() })
+        canvas.on('object:added', updateEmpty)
+        canvas.on('object:removed', updateEmpty)
         canvas.on('path:created', () => { pushHistory(); onCanvasChange() })
 
         // ── mouse:down ────────────────────────────────────────────────
@@ -669,9 +678,8 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
           />
 
           <div
-            id="canvas-empty-hint"
-            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none"
-            style={{ opacity: 0.35 }}
+            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none transition-opacity duration-300"
+            style={{ opacity: isEmpty ? 0.35 : 0 }}
           >
             <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
               <rect x="4" y="4" width="32" height="32" rx="2" stroke="#1a1208" strokeWidth="1.5" strokeDasharray="4 3"/>
