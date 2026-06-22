@@ -22,6 +22,7 @@ A living roadmap for the Pasteup collage art studio. Update this as features shi
 - [x] Undo / delete
 - [x] Canvas format switching (8×10, 5×7, 18×24)
 - [x] Download as PNG
+- [x] Image upload (client-side resize, 5MB limit, session storage)
 
 ## Tool ideas — backlog
 
@@ -34,13 +35,17 @@ Tools and refinements identified during development, not yet built.
 - [ ] Eraser tool for brush/pencil strokes.
 - [ ] Adjustable tape color/opacity in the properties panel (currently fixed aged-paper tone).
 
-## Phase 2 — Persistence & sharing
+## Phase 2 — Persistence & sharing (complete)
 
-- [ ] Supabase integration: `collages` table with `canvas_state jsonb` column
-- [ ] Save / resume collages (auth required)
-- [ ] Supabase Auth — user accounts
+- [x] Supabase integration: `collages` table with `canvas_state jsonb` column
+- [x] Supabase Auth — user accounts (sign up, sign in, forgot password)
+- [x] Save / resume collages
+- [x] Preview thumbnail generation on save
+- [x] My Collages gallery page
+- [x] Open saved collage back into editor
+- [x] Delete collage
+- [ ] Supabase Storage for uploaded images (so uploads survive session)
 - [ ] Publish toggle — make a collage viewable via shareable public URL
-- [ ] Collage gallery / "my collages" view
 
 ## Phase 3 — More image sources
 
@@ -66,3 +71,34 @@ Tools and refinements identified during development, not yet built.
 ---
 
 *Last updated: reflects state as of this conversation. Update phase checkboxes and backlog as work progresses.*
+
+## Tool ideas added since initial roadmap
+
+- [ ] **X-Acto knife tool** — freehand line cut that splits an image into two independent pieces along the cut line. Simpler version: straight line only. Full version: freehand curved cut using Clipper.js for polygon boolean geometry.
+- [ ] **Zoom tool** — scroll to zoom centered on cursor, +/- toolbar buttons, zoom % display, Cmd+0 to reset, spacebar to pan. Clamp between 25%-400%.
+- [ ] **Moveable/dockable toolbar** — allow the floating canvas toolbar to be repositioned so it doesn't obstruct the full canvas view. Options: drag to reposition freely, or dock to left/right edge as a vertical toolbar.
+- [ ] **Diffuser tool** — softens/feathers the edges of an image object so it blends into the canvas instead of sitting on a hard rectangular or cut edge. Adjustable feather radius (and optionally strength) in the properties panel. Most naturally implemented as a post-process on the offscreen canvas already used by the pixel-extraction helpers (`extractPieceAsPixels`, `extractCircle`, `applyRectCrop`): after drawing the piece, apply a feathered alpha mask — e.g. blur a copy of the piece's silhouette and composite it with `globalCompositeOperation = 'destination-in'`, or paint a transparent→opaque alpha gradient around the edges — then reload the result as a new Fabric image. Should work on any placed image as a "feather edges" action on the selected object, not just on freehand cuts.
+
+## AI & Voice features (future phases)
+
+- [ ] **Voice-activated AI composition** — user speaks commands like "cut out the bird" or "place the face on top of the landscape layer". Uses:
+  - Web Speech API for voice-to-text (browser native)
+  - Claude API to interpret the command and map it to canvas actions
+  - Vision-based object segmentation (Meta SAM — Segment Anything Model, or Claude vision) to identify and outline the named object in the image automatically
+  - Segmentation output feeds into existing extractPieceAsPixels for the actual cut
+  - Could also handle layer commands ("bring to front", "make 50% transparent", "add sepia")
+  - Longer term: "make a collage about summer in New York" generates a full composition suggestion from NYPL search results
+
+- [ ] **AI object selection** — click an image and AI automatically detects and selects a specific object (person, animal, building) for extraction, without needing to manually lasso. Similar to Photoshop's "Select Subject" feature.
+
+- [ ] **AI image search suggestions** — based on what's already on the canvas, AI suggests complementary NYPL search terms to find images that would work well together compositionally.
+
+## Autosave
+
+- [ ] **Autosave** — automatically save the collage every 2-3 minutes while the user is actively editing. Only fires if:
+  - User is signed in (no account = nothing to save to)
+  - Canvas has unsaved changes (`saved === false`)
+  - User hasn't manually saved in the last 30 seconds (avoid double-saves)
+  - Show a subtle "Autosaved" indicator in the topbar when it fires
+  - On page unload/close, warn if there are unsaved changes ("You have unsaved changes — are you sure you want to leave?")
+  - Local storage fallback — even for logged-out users, save canvas JSON to localStorage so work isn't lost on accidental refresh
