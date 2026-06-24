@@ -56,9 +56,13 @@ export async function saveCollage({
 // ─── List user's collages ─────────────────────────────────────────────────────
 
 export async function listCollages(): Promise<Collage[]> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
   const { data, error } = await supabase
     .from('collages')
     .select('*')
+    .eq('user_id', user.id)
     .order('updated_at', { ascending: false })
 
   if (error) throw error

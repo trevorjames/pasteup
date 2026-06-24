@@ -645,6 +645,24 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
       },
     }))
 
+    // Derive fold-line positions and panel label centers for formats that
+    // define panels (e.g. the cassette J-card). Drawn as a non-interactive
+    // overlay, so these guides never end up in the export or saved preview.
+    const pxPerInch = format.pxHeight / format.height
+    const panelGuides = format.panels
+      ? (() => {
+          let y = 0
+          const labels: { label: string; top: number }[] = []
+          const folds: number[] = []
+          format.panels.forEach((p, i) => {
+            labels.push({ label: p.label, top: y })
+            y += p.height * pxPerInch
+            if (i < format.panels!.length - 1) folds.push(y)
+          })
+          return { labels, folds }
+        })()
+      : null
+
     return (
       <div
         ref={containerRef}
@@ -676,6 +694,58 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
             width={format.pxWidth}
             height={format.pxHeight}
           />
+
+          {panelGuides && (
+            <svg
+              className="absolute top-0 left-0 pointer-events-none"
+              width={format.pxWidth}
+              height={format.pxHeight}
+              viewBox={`0 0 ${format.pxWidth} ${format.pxHeight}`}
+              style={{ width: format.pxWidth, height: format.pxHeight }}
+            >
+              {/* trim border */}
+              <rect
+                x={0.75}
+                y={0.75}
+                width={format.pxWidth - 1.5}
+                height={format.pxHeight - 1.5}
+                fill="none"
+                stroke="rgba(26,18,8,0.25)"
+                strokeWidth={1.5}
+              />
+              {/* fold lines (horizontal — panels stack vertically) */}
+              {panelGuides.folds.map((fy, i) => (
+                <line
+                  key={`fold-${i}`}
+                  x1={0}
+                  y1={fy}
+                  x2={format.pxWidth}
+                  y2={fy}
+                  stroke="rgba(26,18,8,0.45)"
+                  strokeWidth={1.5}
+                  strokeDasharray="6 5"
+                />
+              ))}
+              {/* panel labels (FRONT highlighted in the accent color) */}
+              {panelGuides.labels.map((l, i) => (
+                <text
+                  key={`label-${i}`}
+                  x={format.pxWidth / 2}
+                  y={l.top + 16}
+                  textAnchor="middle"
+                  fontSize={10}
+                  fontFamily="ui-sans-serif, system-ui, sans-serif"
+                  letterSpacing={1.5}
+                  fill={l.label.toLowerCase() === 'front' ? 'rgba(200,75,47,0.9)' : 'rgba(26,18,8,0.55)'}
+                  stroke="rgba(245,240,232,0.9)"
+                  strokeWidth={3}
+                  paintOrder="stroke"
+                >
+                  {l.label.toUpperCase()}
+                </text>
+              ))}
+            </svg>
+          )}
 
           <div
             className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none transition-opacity duration-300"

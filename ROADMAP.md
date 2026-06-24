@@ -46,6 +46,7 @@ Tools and refinements identified during development, not yet built.
 - [x] Delete collage
 - [ ] Supabase Storage for uploaded images (so uploads survive session)
 - [ ] Publish toggle — make a collage viewable via shareable public URL
+- [ ] **Public discovery gallery** — a browse-all page (e.g. `/gallery` or `/explore`) listing every collage where `published = true` and `show_in_gallery = true`, rendering `preview_url` thumbnails linked to each `/c/[id]`. Distinct from `/collages`, which is the user's *own* private saved-work gallery. Note: the `show_in_gallery` column and the publish-modal "Show in gallery" toggle already exist and write the flag, but **nothing reads it yet** — the gallery page, its query, and a Supabase RLS policy allowing anonymous reads of gallery rows still need to be built. Until then the toggle is a no-op.
 
 ## Phase 3 — More image sources
 

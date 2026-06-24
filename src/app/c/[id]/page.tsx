@@ -1,4 +1,3 @@
-
 'use client'
 // src/app/c/[id]/page.tsx
 // Public view of a published collage.
@@ -9,6 +8,7 @@ import { useParams } from 'next/navigation'
 import { Scissors, Download, Loader2, Lock } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Collage } from '@/lib/supabase'
+import { CANVAS_FORMATS, DEFAULT_FORMAT } from '@/types'
  
 export default function PublicCollagePage() {
   const params = useParams()
@@ -43,6 +43,12 @@ export default function PublicCollagePage() {
     a.download = `${collage.name.replace(/\s+/g, '-').toLowerCase()}.jpg`
     a.click()
   }
+ 
+  // Resolve the collage's format so the preview frame matches its real
+  // proportions (works for any current or future format, including cassette).
+  const fmt = collage
+    ? (CANVAS_FORMATS.find(f => f.id === collage.format_id) ?? DEFAULT_FORMAT)
+    : DEFAULT_FORMAT
  
   return (
     <div className="min-h-screen bg-[#ede8df] flex flex-col">
@@ -125,7 +131,7 @@ export default function PublicCollagePage() {
             {/* Collage image */}
             <div
               className="w-full rounded-xl overflow-hidden shadow-xl bg-[#f5f0e8]"
-              style={{ aspectRatio: collage.format_id === '8x10' ? '4/5' : collage.format_id === '5x7' ? '5/7' : '3/4' }}
+              style={{ aspectRatio: `${fmt.width} / ${fmt.height}` }}
             >
               {collage.preview_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
