@@ -10,10 +10,15 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // Expand this list as additional image sources are added.
 const ALLOWED_HOSTS = new Set([
+  // New York Public Library
   'images.nypl.org',
   'cdn-d8.nypl.org',
   'digitalcollections.nypl.org',
   'iiif.nypl.org',
+  // Smithsonian Open Access (IDS delivery service)
+  'ids.si.edu',
+  'newsdesk.si.edu',
+  '3d-api.si.edu',
 ])
 
 const FETCH_TIMEOUT_MS = 8000
