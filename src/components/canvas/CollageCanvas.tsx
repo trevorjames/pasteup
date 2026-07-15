@@ -1,9 +1,9 @@
 'use client'
 // src/components/canvas/CollageCanvas.tsx - Fabric 5 compatible
-
+ 
 import { useEffect, useRef, useImperativeHandle, forwardRef, useCallback, useState } from 'react'
 import type { ToolMode, CanvasFormat, ObjectProperties } from '@/types'
-
+ 
 export type CollageCanvasHandle = {
   loadImage: (url: string) => Promise<void>
   deleteSelected: () => void
@@ -19,7 +19,7 @@ export type CollageCanvasHandle = {
   bringToFront: () => void
   sendToBack: () => void
 }
-
+ 
 type Props = {
   format: CanvasFormat
   toolMode: ToolMode
@@ -31,7 +31,7 @@ type Props = {
   pencilColor?: string
   textFont?: string
 }
-
+ 
 export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
   function CollageCanvas({ format, toolMode, onSelectionChange, onCanvasChange, brushSize = 20, brushColor = '#1a1208', pencilSize = 2, pencilColor = '#1a1208', textFont = 'Georgia, serif' }, ref) {
     const containerRef = useRef<HTMLDivElement>(null)
@@ -45,32 +45,37 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
     const textFontRef = useRef(textFont)
     useEffect(() => { textFontRef.current = textFont }, [textFont])
     const [isEmpty, setIsEmpty] = useState(true)
-
+ 
     const updateEmpty = useCallback(() => {
       const canvas = fabricRef.current
       if (!canvas) return
       setIsEmpty(canvas.getObjects().length === 0)
     }, [])
-
+ 
     const lassoRef = useRef<{
       active: boolean
       points: { x: number; y: number }[]
       line: any
     }>({ active: false, points: [], line: null })
-
+ 
+    const xactoRef = useRef<{
+      active: boolean
+      points: { x: number; y: number }[]
+    }>({ active: false, points: [] })
+ 
     const sliceRef = useRef<{
       active: boolean
       start: { x: number; y: number } | null
       guide: any
       points: { x: number; y: number }[]
     }>({ active: false, start: null, guide: null, points: [] })
-
+ 
     const cropRef = useRef<{
       active: boolean
       start: { x: number; y: number } | null
       rect: any
     }>({ active: false, start: null, rect: null })
-
+ 
     // Circle crop state
     const circleRef = useRef<{
       active: boolean
@@ -79,21 +84,21 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
       targetImg: any
       previewClone: any
     }>({ active: false, start: null, preview: null, targetImg: null, previewClone: null })
-
+ 
     // Keep toolMode ref in sync
     useEffect(() => {
       toolModeRef.current = toolMode
       const canvas = fabricRef.current
       if (!canvas) return
       const { fabric } = (window as any).__fabricLib ?? {}
-
+ 
       const isSelectMode = toolMode === 'select'
       const isDrawMode = toolMode === 'draw' || toolMode === 'brush'
-
+ 
       if (canvas.isDrawingMode && !isDrawMode) {
         canvas.isDrawingMode = false
       }
-
+ 
       if (isDrawMode && fabric) {
         canvas.isDrawingMode = true
         if (toolMode === 'draw') {
@@ -106,7 +111,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
           canvas.freeDrawingBrush.color = brushColor
         }
       }
-
+ 
       canvas.selection = isSelectMode
       canvas.forEachObject((obj: any) => {
         obj.selectable = isSelectMode
@@ -115,7 +120,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
       canvas.defaultCursor = isSelectMode ? 'default' : 'crosshair'
       canvas.renderAll()
     }, [toolMode, brushSize, brushColor, pencilSize, pencilColor])
-
+ 
     const pushHistory = useCallback(() => {
       const canvas = fabricRef.current
       const utils = utilsRef.current
@@ -123,27 +128,27 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
       historyRef.current.push(utils.serializeCanvas(canvas))
       if (historyRef.current.length > 40) historyRef.current.shift()
     }, [])
-
+ 
     useEffect(() => {
       const el = canvasElRef.current
       if (!el) return
-
+ 
       let cancelled = false
       let teardown: (() => void) | undefined
-
+ 
       ;(async () => {
         const [fabricModule, utils] = await Promise.all([
           import('fabric'),
           import('@/lib/fabricUtils'),
         ])
-
+ 
         if (cancelled) return
-
+ 
         utilsRef.current = utils
-
+ 
         const fabric = (fabricModule as any).fabric ?? fabricModule
         ;(window as any).__fabricLib = { fabric }
-
+ 
         const canvas = new fabric.Canvas(el, {
           width: format.pxWidth,
           height: format.pxHeight,
@@ -154,7 +159,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
         })
         fabricRef.current = canvas
         ;(canvasElRef.current as any).__fabricInstance = canvas
-
+ 
         // ── Selection events ──────────────────────────────────────────
         const emitProps = () => {
           const obj = canvas.getActiveObject()
@@ -171,7 +176,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
             filter: '',
           })
         }
-
+ 
         canvas.on('selection:created', emitProps)
         canvas.on('selection:updated', emitProps)
         canvas.on('selection:cleared', () => onSelectionChange(null))
@@ -179,12 +184,12 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
         canvas.on('object:added', updateEmpty)
         canvas.on('object:removed', updateEmpty)
         canvas.on('path:created', () => { pushHistory(); onCanvasChange() })
-
+ 
         // ── mouse:down ────────────────────────────────────────────────
         canvas.on('mouse:down', (e: any) => {
           const mode = toolModeRef.current
           const pointer = canvas.getPointer(e.e)
-
+ 
           if (mode === 'crop-rect') {
             cropRef.current.active = true
             cropRef.current.start = pointer
@@ -200,11 +205,11 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
             cropRef.current.rect = rect
             canvas.add(rect)
           }
-
+ 
           if (mode === 'crop-circle') {
             circleRef.current.active = true
             circleRef.current.start = pointer
-
+ 
             const targetForPreview = canvas.getObjects()
               .filter((o: any) => o.type === 'image')
               .reverse()
@@ -217,9 +222,9 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
                   pointer.y <= b.top + b.height
                 )
               })
-
+ 
             circleRef.current.targetImg = targetForPreview ?? null
-
+ 
             const preview = new fabric.Circle({
               left: pointer.x, top: pointer.y,
               radius: 0,
@@ -232,26 +237,31 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
             circleRef.current.preview = preview
             canvas.add(preview)
           }
-
+ 
           if (mode === 'crop-lasso' && !lassoRef.current.active) {
             lassoRef.current.active = true
             lassoRef.current.points = [pointer]
             lassoRef.current.line = null
           }
-
+ 
+          if (mode === 'xacto' && !xactoRef.current.active) {
+            xactoRef.current.active = true
+            xactoRef.current.points = [pointer]
+          }
+ 
           if (mode === 'slice') {
             sliceRef.current.active = true
             sliceRef.current.start = pointer
             sliceRef.current.points = [pointer]
             sliceRef.current.guide = null
           }
-
+ 
           if (mode === 'tape') {
             pushHistory()
             utils.addTape(canvas, pointer.x - 45, pointer.y - 13)
             onCanvasChange()
           }
-
+ 
           if (mode === 'text') {
             const text = new fabric.IText('Double-click to edit', {
               left: pointer.x,
@@ -269,12 +279,12 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
             onCanvasChange()
           }
         })
-
+ 
         // ── mouse:move ────────────────────────────────────────────────
         canvas.on('mouse:move', (e: any) => {
           const mode = toolModeRef.current
           const pointer = canvas.getPointer(e.e)
-
+ 
           if (mode === 'crop-rect' && cropRef.current.active && cropRef.current.rect && cropRef.current.start) {
             const { start, rect } = cropRef.current
             rect.set({
@@ -285,7 +295,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
             })
             canvas.renderAll()
           }
-
+ 
           if (mode === 'crop-circle' && circleRef.current.active && circleRef.current.preview && circleRef.current.start) {
             const { start, preview } = circleRef.current
             const dx = pointer.x - start.x
@@ -296,7 +306,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
             preview.set({ left: cx, top: cy, radius })
             canvas.renderAll()
           }
-
+ 
           if (mode === 'crop-lasso' && lassoRef.current.active) {
             lassoRef.current.points.push(pointer)
             const lc = lassoCanvasRef.current
@@ -316,7 +326,25 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
               ctx.fill()
             }
           }
-
+ 
+          if (mode === 'xacto' && xactoRef.current.active) {
+            xactoRef.current.points.push(pointer)
+            const lc = lassoCanvasRef.current
+            if (lc) {
+              const lctx = lc.getContext('2d')!
+              lctx.clearRect(0, 0, lc.width, lc.height)
+              lctx.beginPath()
+              xactoRef.current.points.forEach((p, i) => {
+                i === 0 ? lctx.moveTo(p.x, p.y) : lctx.lineTo(p.x, p.y)
+              })
+              lctx.setLineDash([7, 4])
+              lctx.strokeStyle = '#c84b2f'
+              lctx.lineWidth = 1.5
+              lctx.stroke()
+              lctx.setLineDash([])
+            }
+          }
+ 
           if (mode === 'slice' && sliceRef.current.active) {
             sliceRef.current.points.push(pointer)
             const lc = lassoCanvasRef.current
@@ -337,17 +365,17 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
             }
           }
         })
-
+ 
         // ── mouse:up ──────────────────────────────────────────────────
         canvas.on('mouse:up', (e: any) => {
           const mode = toolModeRef.current
           const pointer = canvas.getPointer(e.e)
-
+ 
           if (mode === 'crop-rect' && cropRef.current.active) {
             const { start, rect } = cropRef.current
             if (rect) canvas.remove(rect)
             cropRef.current = { active: false, start: null, rect: null }
-
+ 
             if (start) {
               const cropRect = {
                 left: Math.min(pointer.x, start.x),
@@ -355,7 +383,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
                 width: Math.abs(pointer.x - start.x),
                 height: Math.abs(pointer.y - start.y),
               }
-
+ 
               const target = canvas.getObjects()
                 .filter((o: any) => o.type === 'image')
                 .reverse()
@@ -368,7 +396,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
                     pointer.y <= b.top + b.height
                   )
                 })
-
+ 
               if (target && cropRect.width > 5 && cropRect.height > 5) {
                 pushHistory()
                 utils.applyRectCrop(canvas, target, cropRect)
@@ -376,12 +404,12 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
               }
             }
           }
-
+ 
           if (mode === 'crop-circle' && circleRef.current.active) {
             const { start, preview, targetImg } = circleRef.current
             if (preview) canvas.remove(preview)
             circleRef.current = { active: false, start: null, preview: null, targetImg: null, previewClone: null }
-
+ 
             if (start && targetImg) {
               const dx = pointer.x - start.x
               const dy = pointer.y - start.y
@@ -390,7 +418,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
                 x: (start.x + pointer.x) / 2,
                 y: (start.y + pointer.y) / 2,
               }
-
+ 
               if (radius > 5) {
                 pushHistory()
                 const originalToRemove = targetImg
@@ -402,13 +430,13 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
               }
             }
           }
-
+ 
           if (mode === 'crop-lasso' && lassoRef.current.active) {
             const lc = lassoCanvasRef.current
             if (lc) lc.getContext('2d')!.clearRect(0, 0, lc.width, lc.height)
             const { points } = lassoRef.current
             lassoRef.current = { active: false, points: [], line: null }
-
+ 
             const target = canvas.getObjects()
               .filter((o: any) => o.type === 'image')
               .reverse()
@@ -421,7 +449,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
                   pointer.y <= b.top + b.height
                 )
               })
-
+ 
             if (target && points.length >= 3) {
               pushHistory()
               const originalToRemove = target
@@ -432,13 +460,53 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
               onCanvasChange()
             }
           }
-
+ 
+          if (mode === 'xacto' && xactoRef.current.active) {
+            const lc = lassoCanvasRef.current
+            if (lc) lc.getContext('2d')!.clearRect(0, 0, lc.width, lc.height)
+            const { points } = xactoRef.current
+            xactoRef.current = { active: false, points: [] }
+ 
+            // Find the image the cut started over (topmost first).
+            const start = points[0]
+            const target = canvas.getObjects()
+              .filter((o: any) => o.type === 'image')
+              .reverse()
+              .find((o: any) => {
+                const b = o.getBoundingRect()
+                return (
+                  start.x >= b.left &&
+                  start.x <= b.left + b.width &&
+                  start.y >= b.top &&
+                  start.y <= b.top + b.height
+                )
+              })
+ 
+            // Require a real stroke, not an accidental click.
+            const dragged =
+              points.length >= 2 &&
+              Math.hypot(
+                points[points.length - 1].x - start.x,
+                points[points.length - 1].y - start.y
+              ) > 8
+ 
+            if (target && dragged) {
+              pushHistory()
+              const originalToRemove = target
+              utils.cutImageAlongPath(canvas, target, points, () => {
+                canvas.remove(originalToRemove)
+                canvas.renderAll()
+              })
+              onCanvasChange()
+            }
+          }
+ 
           if (mode === 'slice' && sliceRef.current.active) {
             const lc = lassoCanvasRef.current
             if (lc) lc.getContext('2d')!.clearRect(0, 0, lc.width, lc.height)
             const { points } = sliceRef.current
             sliceRef.current = { active: false, start: null, guide: null, points: [] }
-
+ 
             const target = canvas.getActiveObject() ?? lastSelectedRef.current
             if (target && target.type === 'image' && points.length >= 3) {
               pushHistory()
@@ -451,7 +519,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
             }
           }
         })
-
+ 
         // ── Keyboard shortcuts ────────────────────────────────────────
         const handleKey = (e: KeyboardEvent) => {
           if ((e.key === 'Delete' || e.key === 'Backspace') && document.activeElement?.tagName !== 'INPUT') {
@@ -464,16 +532,16 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
           }
         }
         window.addEventListener('keydown', handleKey)
-
+ 
         // ── Drag and drop ─────────────────────────────────────────────
         const upperCanvas = canvas.upperCanvasEl
         upperCanvas.setAttribute('draggable', 'false')
-
+ 
         const onDragOver = (e: DragEvent) => {
           e.preventDefault()
           e.stopPropagation()
         }
-
+ 
         const onDrop = (e: DragEvent) => {
           e.preventDefault()
           e.stopPropagation()
@@ -512,10 +580,10 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
             { crossOrigin: 'anonymous' }
           )
         }
-
+ 
         upperCanvas.addEventListener('dragover', onDragOver, true)
         upperCanvas.addEventListener('drop', onDrop, true)
-
+ 
         teardown = () => {
           canvas.dispose()
           window.removeEventListener('keydown', handleKey)
@@ -525,14 +593,14 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
           utilsRef.current = null
         }
       })()
-
+ 
       return () => {
         cancelled = true
         teardown?.()
       }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [format.pxWidth, format.pxHeight])
-
+ 
     // ── Imperative API ────────────────────────────────────────────────────────
     useImperativeHandle(ref, () => ({
       loadImage: async (url: string) => {
@@ -543,14 +611,14 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
         await utils.loadImageFromUrl(canvas, url)
         onCanvasChange()
       },
-
+ 
       deleteSelected: () => {
         const canvas = fabricRef.current
         if (!canvas) return
         const obj = canvas.getActiveObject()
         if (obj) { pushHistory(); canvas.remove(obj); onCanvasChange() }
       },
-
+ 
       undo: () => {
         const canvas = fabricRef.current
         if (!canvas || historyRef.current.length === 0) return
@@ -558,26 +626,26 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
         canvas.loadFromJSON(prev, () => canvas.renderAll())
         onCanvasChange()
       },
-
+ 
       serialize: () => {
         const canvas = fabricRef.current
         const utils = utilsRef.current
         return (canvas && utils) ? utils.serializeCanvas(canvas) : ''
       },
-
+ 
       loadFromJSON: async (json: string) => {
         const canvas = fabricRef.current
         const utils = utilsRef.current
         if (!canvas || !utils) return
         await utils.loadCanvasFromJSON(canvas, json)
       },
-
+ 
       exportImage: (multiplier = 1) => {
         const canvas = fabricRef.current
         const utils = utilsRef.current
         return (canvas && utils) ? utils.exportCanvas(canvas, multiplier) : ''
       },
-
+ 
       getActiveObjectProps: () => {
         const obj = fabricRef.current?.getActiveObject()
         if (!obj) return null
@@ -592,7 +660,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
           filter: '',
         }
       },
-
+ 
       updateActiveObject: (props: Partial<ObjectProperties>) => {
         const canvas = fabricRef.current
         const obj = canvas?.getActiveObject()
@@ -609,7 +677,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
         canvas.renderAll()
         onCanvasChange()
       },
-
+ 
       removeClipFromSelected: () => {
         const canvas = fabricRef.current
         const obj = canvas?.getActiveObject()
@@ -619,32 +687,32 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
           onCanvasChange()
         }
       },
-
+ 
       bringForward: () => {
         const canvas = fabricRef.current
         const obj = canvas?.getActiveObject()
         if (canvas && obj) { canvas.bringForward(obj); canvas.renderAll() }
       },
-
+ 
       sendBackward: () => {
         const canvas = fabricRef.current
         const obj = canvas?.getActiveObject()
         if (canvas && obj) { canvas.sendBackwards(obj); canvas.renderAll() }
       },
-
+ 
       bringToFront: () => {
         const canvas = fabricRef.current
         const obj = canvas?.getActiveObject()
         if (canvas && obj) { canvas.bringToFront(obj); canvas.renderAll() }
       },
-
+ 
       sendToBack: () => {
         const canvas = fabricRef.current
         const obj = canvas?.getActiveObject()
         if (canvas && obj) { canvas.sendToBack(obj); canvas.renderAll() }
       },
     }))
-
+ 
     // Derive fold-line positions and panel label centers for formats that
     // define panels (e.g. the cassette J-card). Drawn as a non-interactive
     // overlay, so these guides never end up in the export or saved preview.
@@ -662,7 +730,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
           return { labels, folds }
         })()
       : null
-
+ 
     return (
       <div
         ref={containerRef}
@@ -672,7 +740,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
         <div className="absolute top-3 left-1/2 -translate-x-1/2 text-[10px] tracking-widest uppercase text-black/30 select-none whitespace-nowrap">
           {format.label} · {format.width}" × {format.height}"
         </div>
-
+ 
         <div
           className="relative"
           style={{
@@ -680,7 +748,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
           }}
         >
           <canvas ref={canvasElRef} />
-
+ 
           <canvas
             ref={lassoCanvasRef}
             style={{
@@ -694,7 +762,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
             width={format.pxWidth}
             height={format.pxHeight}
           />
-
+ 
           {panelGuides && (
             <svg
               className="absolute top-0 left-0 pointer-events-none"
@@ -746,7 +814,7 @@ export const CollageCanvas = forwardRef<CollageCanvasHandle, Props>(
               ))}
             </svg>
           )}
-
+ 
           <div
             className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none transition-opacity duration-300"
             style={{ opacity: isEmpty ? 0.35 : 0 }}

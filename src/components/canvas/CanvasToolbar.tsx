@@ -7,6 +7,7 @@ import {
   Circle,
   Lasso,
   Scissors,
+  Slice,
   Sticker,
   Type,
   Pencil,
@@ -53,6 +54,12 @@ const TOOLS: Tool[] = [
     icon: <Scissors size={15} />,
     label: 'Extract',
     tooltip: 'Draw a freehand shape to extract as a new piece',
+  },
+  {
+    id: 'xacto',
+    icon: <Slice size={15} />,
+    label: 'X-Acto',
+    tooltip: 'Drag across an image to cut it into two pieces',
   },
   {
     id: 'tape',

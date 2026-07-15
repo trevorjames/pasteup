@@ -1,10 +1,10 @@
 // src/types/index.ts
- 
+
 export type CanvasPanel = {
   label: string
   height: number // inches; panels stack top→bottom and heights should sum to the format's total height
 }
- 
+
 export type CanvasFormat = {
   id: string
   label: string
@@ -16,7 +16,7 @@ export type CanvasFormat = {
   // Used by multi-panel formats like the cassette J-card.
   panels?: CanvasPanel[]
 }
- 
+
 export const CANVAS_FORMATS: CanvasFormat[] = [
   { id: '8x10',  label: '8 × 10"',  width: 8,  height: 10, pxWidth: 480, pxHeight: 600 },
   { id: '5x7',   label: '5 × 7"',   width: 5,  height: 7,  pxWidth: 420, pxHeight: 588 },
@@ -37,12 +37,12 @@ export const CANVAS_FORMATS: CanvasFormat[] = [
     ],
   },
 ]
- 
+
 export const DEFAULT_FORMAT = CANVAS_FORMATS[0]
- 
+
 // Where an image came from. 'upload' is the user's own files.
 export type ImageSource = 'nypl' | 'smithsonian' | 'europeana' | 'upload'
- 
+
 // An image from any connected open-access collection.
 export type CollectionImage = {
   uuid: string
@@ -54,16 +54,16 @@ export type CollectionImage = {
   source?: ImageSource
   attribution?: string // e.g. "National Portrait Gallery"
 }
- 
+
 // Back-compat alias — existing imports of NYPLImage keep working.
 export type NYPLImage = CollectionImage
- 
+
 export type NYPLSearchResponse = {
   images: NYPLImage[]
   totalCount: number
   page: number
 }
- 
+
 export type ToolMode =
   | 'select'
   | 'crop-rect'
@@ -75,7 +75,7 @@ export type ToolMode =
   | 'text'
   | 'draw'
   | 'brush'
- 
+
 export type CollageState = {
   id?: string
   name: string
@@ -86,7 +86,7 @@ export type CollageState = {
   createdAt?: string
   updatedAt?: string
 }
- 
+
 export type ObjectProperties = {
   opacity: number
   angle: number
