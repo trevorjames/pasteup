@@ -2,6 +2,7 @@
 // src/app/editor/page.tsx
 
 import { useRef, useState, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Scissors, Save, ChevronDown, LogIn, LogOut, User } from 'lucide-react'
 import { CollageCanvas, type CollageCanvasHandle } from '@/components/canvas/CollageCanvas'
 import { CanvasToolbar } from '@/components/canvas/CanvasToolbar'
@@ -16,6 +17,7 @@ import { CANVAS_FORMATS, DEFAULT_FORMAT } from '@/types'
 import type { CanvasFormat, ToolMode, ObjectProperties } from '@/types'
 
 export default function EditorPage() {
+  const router = useRouter()
   const canvasRef = useRef<CollageCanvasHandle>(null)
   const [format, setFormat] = useState<CanvasFormat>(DEFAULT_FORMAT)
   const [toolMode, setToolMode] = useState<ToolMode>('select')
@@ -151,7 +153,11 @@ if (canvasEl) {
   const handleSignOut = useCallback(async () => {
     await supabase.auth.signOut()
     setUserMenuOpen(false)
-  }, [])
+    // Send them to the home page rather than leaving them in the editor —
+    // avoids a signed-out visitor sitting in front of someone else's
+    // collage (see ROADMAP: /editor is an owner-only workspace).
+    router.push('/?loggedOut=1')
+  }, [router])
 
   const handleAuthSuccess = useCallback(() => {
     setShowAuthModal(false)
