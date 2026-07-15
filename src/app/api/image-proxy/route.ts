@@ -34,21 +34,31 @@ function isAllowed(hostname: string): boolean {
   return false
 }
 
+// Named types (rather than an inline union) so TypeScript reliably narrows
+// on `ok` -- this is what failed to compile before.
+type CheckOk = { ok: true; url: URL }
+type CheckFail = { ok: false; status: number; msg: string }
+type CheckResult = CheckOk | CheckFail
+
 // https-only + on the allowlist. Returns the parsed URL or a reason to reject.
-function check(raw: string): { ok: true; url: URL } | { ok: false; status: number; msg: string } {
+function check(raw: string): CheckResult {
   let url: URL
   try {
     url = new URL(raw)
   } catch {
-    return { ok: false, status: 400, msg: 'Invalid url' }
+    const fail: CheckFail = { ok: false, status: 400, msg: 'Invalid url' }
+    return fail
   }
   if (url.protocol !== 'https:') {
-    return { ok: false, status: 400, msg: 'Only https is allowed' }
+    const fail: CheckFail = { ok: false, status: 400, msg: 'Only https is allowed' }
+    return fail
   }
   if (!isAllowed(url.hostname)) {
-    return { ok: false, status: 403, msg: 'Host not allowed' }
+    const fail: CheckFail = { ok: false, status: 403, msg: 'Host not allowed' }
+    return fail
   }
-  return { ok: true, url }
+  const ok: CheckOk = { ok: true, url }
+  return ok
 }
 
 export async function GET(request: NextRequest) {
@@ -57,8 +67,8 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Missing url parameter', { status: 400 })
   }
 
-  const first = check(raw)
-  if (!first.ok) {
+  const first: CheckResult = check(raw)
+  if (first.ok === false) {
     return new NextResponse(first.msg, { status: first.status })
   }
 
@@ -69,7 +79,7 @@ export async function GET(request: NextRequest) {
     // Follow redirects manually, re-validating each hop's host against the
     // allowlist. This is what prevents an allowed host from redirecting the
     // proxy to an internal/arbitrary address (the SSRF-via-redirect bypass).
-    let current = first.url
+    let current: URL = first.url
     let upstream: Response | null = null
 
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
@@ -88,12 +98,12 @@ export async function GET(request: NextRequest) {
 
       const location = res.headers.get('location')
       if (!location) {
-        upstream = res // 3xx with no Location — treat as terminal (will fail .ok below)
+        upstream = res // 3xx with no Location -- treat as terminal (will fail .ok below)
         break
       }
 
-      const next = check(new URL(location, current).toString())
-      if (!next.ok) {
+      const next: CheckResult = check(new URL(location, current).toString())
+      if (next.ok === false) {
         return new NextResponse('Redirect to a disallowed host was blocked', { status: 403 })
       }
       current = next.url
@@ -111,7 +121,7 @@ export async function GET(request: NextRequest) {
       return new NextResponse('Response is not an image', { status: 400 })
     }
 
-    // Reject oversized payloads — by declared length first, then actual bytes.
+    // Reject oversized payloads -- by declared length first, then actual bytes.
     const declared = Number(upstream.headers.get('content-length') ?? '0')
     if (declared && declared > MAX_BYTES) {
       return new NextResponse('Image too large', { status: 413 })
