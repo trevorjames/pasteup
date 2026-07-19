@@ -1,6 +1,6 @@
 'use client'
 // src/app/editor/page.tsx
-
+ 
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Scissors, Save, ChevronDown, LogIn, LogOut, User } from 'lucide-react'
@@ -15,7 +15,7 @@ import { supabase } from '@/lib/supabase'
 import { saveCollage, loadCollage } from '@/lib/collages'
 import { CANVAS_FORMATS, DEFAULT_FORMAT } from '@/types'
 import type { CanvasFormat, ToolMode, ObjectProperties } from '@/types'
-
+ 
 export default function EditorPage() {
   const router = useRouter()
   const canvasRef = useRef<CollageCanvasHandle>(null)
@@ -32,40 +32,40 @@ export default function EditorPage() {
   const [pencilSize, setPencilSize] = useState(2)
   const [pencilColor, setPencilColor] = useState('#1a1208')
   const [textFont, setTextFont] = useState('Georgia, serif')
-
+ 
   // Auth state
   const [user, setUser] = useState<any>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
   const [userMenuOpen, setUserMenuOpen] = useState(false)
-
+ 
   // Publish state
   const [showPublishModal, setShowPublishModal] = useState(false)
   const [currentCollage, setCurrentCollage] = useState<any>(null)
-
+ 
   // Listen for auth state changes
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user))
-
+ 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
-
+ 
     return () => subscription.unsubscribe()
   }, [])
-
+ 
   // Load collage from URL param on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const id = params.get('id')
     if (!id) return
-
+ 
     loadCollage(id).then(collage => {
       setCollageId(collage.id)
       setCollageName(collage.name)
       const fmt = CANVAS_FORMATS.find(f => f.id === collage.format_id) ?? DEFAULT_FORMAT
       setFormat(fmt)
-
+ 
       // Wait for canvas to initialize then load the JSON
       setTimeout(() => {
         const json = typeof collage.canvas_json === 'string'
@@ -78,44 +78,50 @@ export default function EditorPage() {
       console.error('Failed to load collage:', err)
     })
   }, [])
-
+ 
   // ── Image loading ─────────────────────────────────────────────────────────
   const handleImageSelect = useCallback((url: string) => {
     canvasRef.current?.loadImage(url)
     setSaved(false)
   }, [])
-
+ 
   const handleCanvasDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     const url = e.dataTransfer.getData('application/pasteup-image-url')
     if (url) handleImageSelect(url)
   }, [handleImageSelect])
-
+ 
   const handleCanvasChange = useCallback(() => setSaved(false), [])
-
+ 
   // ── Properties ────────────────────────────────────────────────────────────
   const handlePropsChange = useCallback((props: Partial<ObjectProperties>) => {
     canvasRef.current?.updateActiveObject(props)
     setSelectedProps(prev => prev ? { ...prev, ...props } : null)
   }, [])
-
+ 
   // ── Layer controls ────────────────────────────────────────────────────────
   const handleBringForward = useCallback(() => canvasRef.current?.bringForward(), [])
   const handleSendBackward = useCallback(() => canvasRef.current?.sendBackward(), [])
   const handleBringToFront = useCallback(() => canvasRef.current?.bringToFront(), [])
   const handleSendToBack = useCallback(() => canvasRef.current?.sendToBack(), [])
-
+ 
   // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = useCallback(async () => {
-    if (!user) {
+    // Check the live session rather than trusting the `user` React state.
+    // That state is only updated by the async onAuthStateChange listener,
+    // which can still lag right after a successful sign-in — that race is
+    // what caused the sign-in modal to reappear immediately after signing
+    // in successfully (this check would still see user as null).
+    const { data: { user: liveUser } } = await supabase.auth.getUser()
+    if (!liveUser) {
       setAuthMode('signin')
       setShowAuthModal(true)
       return
     }
-
+ 
     const json = canvasRef.current?.serialize()
     if (!json) return
-
+ 
     setSaving(true)
     try {
   // Generate preview thumbnail from canvas
@@ -130,7 +136,7 @@ if (canvasEl) {
   ctx.drawImage(canvasEl, 0, 0, offscreen.width, offscreen.height)
   previewUrl = offscreen.toDataURL('image/jpeg', 0.92)
 }
-
+ 
       const result = await saveCollage({
         id: collageId ?? undefined,
         name: collageName,
@@ -147,8 +153,8 @@ if (canvasEl) {
     } finally {
       setSaving(false)
     }
-  }, [user, collageName, format.id, collageId])
-
+  }, [collageName, format.id, collageId])
+ 
   // ── Auth ──────────────────────────────────────────────────────────────────
   const handleSignOut = useCallback(async () => {
     await supabase.auth.signOut()
@@ -158,12 +164,14 @@ if (canvasEl) {
     // collage (see ROADMAP: /editor is an owner-only workspace).
     router.push('/?loggedOut=1')
   }, [router])
-
+ 
   const handleAuthSuccess = useCallback(() => {
     setShowAuthModal(false)
-    setTimeout(() => handleSave(), 300)
+    // No timing guess needed here anymore — handleSave checks the live
+    // session itself rather than relying on the user state being fresh.
+    handleSave()
   }, [handleSave])
-
+ 
   // ── Export ────────────────────────────────────────────────────────────────
   const handleExportPNG = useCallback(() => {
     const dataUrl = canvasRef.current?.exportImage(3)
@@ -173,11 +181,11 @@ if (canvasEl) {
     a.download = `${collageName.replace(/\s+/g, '-').toLowerCase()}.png`
     a.click()
   }, [collageName])
-
+ 
   const handleExportPDF = useCallback(() => {
     alert('Print PDF export coming soon!')
   }, [])
-
+ 
   const handlePublish = useCallback(async () => {
     if (!user) {
       setAuthMode('signin')
@@ -188,10 +196,10 @@ if (canvasEl) {
     await handleSave()
     setShowPublishModal(true)
   }, [user, handleSave])
-
+ 
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-zinc-950 overflow-hidden">
-
+ 
       {/* Auth modal */}
       {showAuthModal && (
         <AuthModal
@@ -200,7 +208,7 @@ if (canvasEl) {
           onSuccess={handleAuthSuccess}
         />
       )}
-
+ 
       {/* Publish modal */}
       {showPublishModal && currentCollage && (
         <PublishModal
@@ -209,7 +217,7 @@ if (canvasEl) {
           onUpdate={(updated) => setCurrentCollage(updated)}
         />
       )}
-
+ 
       {/* ── Top bar ──────────────────────────────────────────────────────── */}
       <header className="flex items-center justify-between h-12 px-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
         <div className="flex items-center gap-2">
@@ -220,14 +228,14 @@ if (canvasEl) {
             Pasteup
           </span>
         </div>
-
+ 
         <input
           type="text"
           value={collageName}
           onChange={e => setCollageName(e.target.value)}
           className="text-[13px] text-zinc-600 dark:text-zinc-300 bg-transparent border-b border-transparent hover:border-zinc-300 focus:border-zinc-400 focus:outline-none px-1 py-0.5 text-center w-56 transition-colors"
         />
-
+ 
         <div className="flex items-center gap-2">
           {/* Format picker */}
           <div className="relative">
@@ -257,7 +265,7 @@ if (canvasEl) {
               </div>
             )}
           </div>
-
+ 
           {/* Save button */}
           <button
             onClick={handleSave}
@@ -267,7 +275,7 @@ if (canvasEl) {
             <Save size={12} />
             {saving ? 'Saving…' : saved ? 'Saved' : 'Save'}
           </button>
-
+ 
           {/* Auth */}
           {!user ? (
             <button
@@ -305,7 +313,7 @@ if (canvasEl) {
               )}
             </div>
           )}
-
+ 
           {/* Publish CTA */}
           <button
             onClick={handlePublish}
@@ -315,7 +323,7 @@ if (canvasEl) {
           </button>
         </div>
       </header>
-
+ 
       {/* ── Main layout ──────────────────────────────────────────────────── */}
       <div
         className="flex flex-1 overflow-hidden"
@@ -323,7 +331,7 @@ if (canvasEl) {
         onDrop={handleCanvasDrop}
       >
         <ImageLibraryPanel onImageSelect={handleImageSelect} />
-
+ 
         <main className="flex-1 relative overflow-auto">
           <CollageCanvas
             ref={canvasRef}
@@ -357,7 +365,7 @@ if (canvasEl) {
             onDelete={() => canvasRef.current?.deleteSelected()}
           />
         </main>
-
+ 
         <PropertiesPanel
           properties={selectedProps}
           onChange={handlePropsChange}
